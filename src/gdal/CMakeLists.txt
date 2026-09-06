@@ -24,6 +24,10 @@ set(CMAKE_AUTOMOC ON)
  
 # Extra header to be shown in the IDE or to be translated
 set(MAPPER_GDAL_HEADERS
+  gdal_ogc_catalog.h
+  gdal_ogc_connection.h
+  gdal_ogc_dialog.h
+  gdal_online_raster_template.h
   ogr_file_format_p.h
 )
 	
@@ -31,6 +35,10 @@ set(MAPPER_GDAL_SOURCES
   gdal_file.cpp
   gdal_image_reader.cpp
   gdal_manager.cpp
+  gdal_ogc_catalog.cpp
+  gdal_ogc_connection.cpp
+  gdal_ogc_dialog.cpp
+  gdal_online_raster_template.cpp
   gdal_settings_page.cpp
   gdal_template.cpp
   kmz_groundoverlay_export.cpp
@@ -55,6 +63,9 @@ target_include_directories(mapper-gdal SYSTEM PRIVATE ${GDAL_INCLUDE_DIRS})
 target_include_directories(mapper-gdal PRIVATE "${PROJECT_SOURCE_DIR}/src")
 
 target_link_libraries(mapper-gdal ${GDAL_LIBRARIES} Qt5::Core Qt5::Gui Qt5::Widgets Mapper_Common)
+if(WIN32)
+  target_link_libraries(mapper-gdal advapi32)
+endif()
 
 set_target_properties(mapper-gdal PROPERTIES PREFIX "")
 

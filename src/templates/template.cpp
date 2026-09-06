@@ -56,6 +56,7 @@
 #include "core/objects/object.h"
 #include "fileformats/file_format.h"
 #include "gdal/gdal_template.h"
+#include "gdal/gdal_online_raster_template.h"
 #include "gdal/ogr_template.h"
 #include "gui/file_dialog.h"
 #include "templates/template_image.h"
@@ -1049,6 +1050,8 @@ std::unique_ptr<Template> Template::templateForType(const QStringRef& type, cons
 	else if (type_cstring == "TemplateTrack" && !track_with_gdal)
 		t = std::make_unique<TemplateTrack>(path, map);
 #ifdef MAPPER_USE_GDAL
+	else if (type_cstring == "GdalOnlineRasterTemplate")
+		t = std::make_unique<GdalOnlineRasterTemplate>(path, map);
 	else if (type_cstring == "GdalTemplate")
 		t = std::make_unique<GdalTemplate>(path, map);
 	else if (type_cstring == "OgrTemplate" || type_cstring == "TemplateTrack")

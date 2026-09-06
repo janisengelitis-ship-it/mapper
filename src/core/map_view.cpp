@@ -71,7 +71,11 @@ bool TemplateVisibility::hasAlpha() const
 // ### MapView ###
 
 const double MapView::zoom_in_limit = 512;
-const double MapView::zoom_out_limit = 1 / 16.0;
+// Regional and global georeferenced online templates can cover an area many
+// orders of magnitude larger than an orienteering map.  Keep the traditional
+// zoom-in limit, but allow the view to fit such a template without changing
+// the map scale or the template georeferencing.
+const double MapView::zoom_out_limit = 1 / 4096.0;
 
 
 MapView::MapView(QObject* parent, Map* map)

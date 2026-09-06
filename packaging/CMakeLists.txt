@@ -303,6 +303,41 @@ if(Mapper_PACKAGE_GDAL)
 	install(
 	  DIRECTORY "${GDAL_DATA_DIR}/"
 	  DESTINATION "${MAPPER_DATA_DESTINATION}/gdal")
+
+	# MinGW libcurl is normally built with a path to the build machine's CA
+	# bundle.  That absolute path is invalid after installing Mapper elsewhere.
+	# Ship a relocatable bundle so HTTPS works from a standalone Windows package.
+	if(WIN32)
+		set(Mapper_CA_BUNDLE_FILE "" CACHE FILEPATH
+		  "TLS CA bundle to include in standalone Windows packages")
+		mark_as_advanced(Mapper_CA_BUNDLE_FILE)
+		if(NOT Mapper_CA_BUNDLE_FILE)
+			get_filename_component(gdal_prefix "${GDAL_DATA_DIR}/../.." ABSOLUTE)
+			find_file(_mapper_ca_bundle
+			  NAMES ca-bundle.crt ca-certificates.crt tls-ca-bundle.pem
+			  HINTS
+			    "${gdal_prefix}/etc/ssl/certs"
+			    "${gdal_prefix}/etc/pki/ca-trust/extracted/pem"
+			    "$ENV{MINGW_PREFIX}/etc/ssl/certs"
+			    "$ENV{MINGW_PREFIX}/etc/pki/ca-trust/extracted/pem"
+			    "/etc/ssl/certs"
+			    "/etc/pki/ca-trust/extracted/pem"
+			)
+			if(_mapper_ca_bundle)
+				set(Mapper_CA_BUNDLE_FILE "${_mapper_ca_bundle}" CACHE FILEPATH
+				  "TLS CA bundle to include in standalone Windows packages" FORCE)
+			endif()
+		endif()
+		if(NOT EXISTS "${Mapper_CA_BUNDLE_FILE}")
+			message(SEND_ERROR
+			  "A TLS CA bundle is required when packaging GDAL for Windows. "
+			  "Set Mapper_CA_BUNDLE_FILE to a readable PEM bundle.")
+		endif()
+		install(
+		  FILES "${Mapper_CA_BUNDLE_FILE}"
+		  DESTINATION "${MAPPER_RUNTIME_DESTINATION}/certs"
+		  RENAME ca-bundle.crt)
+	endif()
 	foreach(item IN LISTS GDAL_LIBRARIES)
 		if(EXISTS "${item}")
 			get_filename_component(GDAL_LIBRARY_DIR "{item}" PATH)
