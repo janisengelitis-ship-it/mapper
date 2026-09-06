@@ -1,4 +1,4 @@
-name: Apply OGC map editor patch
+name: Apply OGC upstream cleanup
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  patch:
+  cleanup:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -17,93 +17,42 @@ jobs:
         with:
           ref: wms-wmts-online-backgrounds-stage
 
-      - name: Apply focused map editor changes
+      - name: Remove staging reconstruction artifacts
         shell: python
         run: |
           from pathlib import Path
 
-          path = Path("src/gui/map/map_editor.cpp")
-          text = path.read_text(encoding="utf-8")
+          packaging = Path("packaging/CMakeLists.txt")
+          text = packaging.read_text(encoding="utf-8")
+          malformed = '([^\\\n]*).*"'
+          corrected = '([^\\n]*).*"'
+          if malformed not in text:
+              raise SystemExit("Malformed CMake escape anchor not found")
+          packaging.write_text(text.replace(malformed, corrected, 1), encoding="utf-8")
 
-          if 'newAction("openogctemplate"' in text:
-              raise SystemExit(0)
-
-          old = '''#ifdef MAPPER_USE_GDAL
-          #include "gdal/ogr_template.h"
-          #endif'''.replace("          ", "")
-          new = '''#ifdef MAPPER_USE_GDAL
-          #include "gdal/gdal_ogc_dialog.h"
-          #include "gdal/gdal_online_raster_template.h"
-          #include "gdal/ogr_template.h"
-          #endif'''.replace("          ", "")
+          template = Path("src/templates/template.cpp")
+          text = template.read_text(encoding="utf-8")
+          old = 'void Template::deletePassPoint(int pos)\n{\n\tQ_ASSERT(!is_georeferenced);\n\tpasspoints.erase(passpoints.begin() + pos);\n}'
+          new = 'void Template::deletePassPoint(int pos)\n{\n\tpasspoints.erase(passpoints.begin() + pos);\n}'
           if old not in text:
-              raise SystemExit("GDAL include anchor not found")
-          text = text.replace(old, new, 1)
+              raise SystemExit("Unexpected Template::deletePassPoint body")
+          template.write_text(text.replace(old, new, 1), encoding="utf-8")
 
-          anchor = '\topen_template_act = newAction("opentemplate", tr("Open template..."), this, SLOT(openTemplateClicked()), nullptr, QString{}, "templates_menu.html");'
-          block = '''#ifdef MAPPER_USE_GDAL
-          \tauto* ogc_template_act = newAction("openogctemplate", tr("Add WMS/WMTS background map..."), nullptr, nullptr, nullptr, QString{}, "templates_menu.html");
-          \tconnect(ogc_template_act, &QAction::triggered, this, [this](bool) {
-          \t\tQString preferred_crs;
-          \t\tif (map->getGeoreferencing().getState() == Georeferencing::Geospatial)
-          \t\t\tpreferred_crs = map->getGeoreferencing().getProjectedCRSSpec();
-          \t\tGdalOgcDialog dialog(preferred_crs, window);
-          \t\tif (dialog.exec() != QDialog::Accepted)
-          \t\t\treturn;
+          header = Path("src/gdal/gdal_ogc_catalog.h")
+          text = header.read_text(encoding="utf-8")
+          text = text.replace('#include <QCoreApplication>\n', '', 1)
+          text = text.replace('\tQ_DECLARE_TR_FUNCTIONS(OpenOrienteering::GdalOgcCatalog)\n\n', '', 1)
+          header.write_text(text, encoding="utf-8")
 
-          \t\tconst auto selection = dialog.selection();
-          \t\tconst bool fit_service_extent = map->getNumObjects() == 0
-          \t\t                                && map->getNumTemplates() == 0;
-          \t\tauto online_template = std::make_unique<GdalOnlineRasterTemplate>(
-          \t\t        selection.connection,
-          \t\t        selection.source.dataset_name,
-          \t\t        selection.source.description,
-          \t\t        selection.prepared_data,
-          \t\t        map);
-          \t\tif (!online_template->setupAndLoad(window, main_view))
-          \t\t{
-          \t\t\tQMessageBox::warning(window,
-          \t\t\t                     tr("WMS/WMTS background map"),
-          \t\t\t                     tr("Could not add the online background map: %1")
-          \t\t\t                     .arg(online_template->errorString()));
-          \t\t\treturn;
-          \t\t}
-
-          \t\tauto* online_template_ptr = online_template.get();
-          \t\tmap->addTemplate(-1, std::move(online_template));
-          \t\thideAllTemplates(false);
-          \t\tshowTemplateWindow(true);
-          \t\tif (fit_service_extent)
-          \t\t{
-          \t\t\tconst QRectF service_extent = online_template_ptr->calculateTemplateBoundingBox();
-          \t\t\tif (service_extent.isValid() && !service_extent.isEmpty())
-          \t\t\t\tmap_widget->adjustViewToRect(service_extent, MapWidget::ContinuousZoom);
-          \t\t}
-          \t\tmap->updateAllMapWidgets();
-          \t});
-          #endif
-          '''.replace("          ", "")
-          if anchor not in text:
-              raise SystemExit("Template action anchor not found")
-          text = text.replace(anchor, block + anchor, 1)
-
-          old = '\ttemplate_menu->addSeparator();\n\ttemplate_menu->addAction(open_template_act);'
-          new = '\ttemplate_menu->addSeparator();\n#ifdef MAPPER_USE_GDAL\n\ttemplate_menu->addAction(findAction("openogctemplate"));\n#endif\n\ttemplate_menu->addAction(open_template_act);'
-          if old not in text:
-              raise SystemExit("Template menu anchor not found")
-          text = text.replace(old, new, 1)
-
-          path.write_text(text, encoding="utf-8")
-
-      - name: Commit patch
+      - name: Commit cleanup
         shell: bash
         run: |
+          git diff --check
           if git diff --quiet; then
             exit 0
           fi
-          git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/gui/map/map_editor.cpp
-          git commit -m "Stage WMS/WMTS map editor integration"
+          git add packaging/CMakeLists.txt src/templates/template.cpp src/gdal/gdal_ogc_catalog.h
+          git commit -m "Clean upstream WMS/WMTS candidate"
           git push origin HEAD:wms-wmts-online-backgrounds-stage
