@@ -174,6 +174,17 @@ if (Mapper_USE_GDAL)
 	target_compile_definitions(georeferencing_t PRIVATE MAPPER_TEST_GDAL)
 	target_include_directories(georeferencing_t SYSTEM PRIVATE ${GDAL_INCLUDE_DIRS})
 	target_link_libraries(georeferencing_t PRIVATE ${GDAL_LIBRARIES})
+	add_system_test(gdal_ogc_t)
+	target_link_libraries(gdal_ogc_t PRIVATE mapper-gdal)
+	if(WIN32 AND Mapper_CA_BUNDLE_FILE)
+		add_custom_command(TARGET gdal_ogc_t POST_BUILD
+		  COMMAND "${CMAKE_COMMAND}" -E make_directory
+		          "$<TARGET_FILE_DIR:gdal_ogc_t>/certs"
+		  COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+		          "${Mapper_CA_BUNDLE_FILE}"
+		          "$<TARGET_FILE_DIR:gdal_ogc_t>/certs/ca-bundle.crt"
+		  VERBATIM)
+	endif()
 endif()
 add_unit_test(grid_t ../src/util/util)
 add_unit_test(key_value_container_t ../src/util/key_value_container)
