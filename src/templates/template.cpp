@@ -854,7 +854,6 @@ void Template::addPassPoint(const PassPoint& point, int pos)
 }
 void Template::deletePassPoint(int pos)
 {
-	Q_ASSERT(!is_georeferenced);
 	passpoints.erase(passpoints.begin() + pos);
 }
 void Template::clearPassPoints()

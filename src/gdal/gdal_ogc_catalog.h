@@ -8,7 +8,6 @@
 #ifndef OPENORIENTEERING_GDAL_OGC_CATALOG_H
 #define OPENORIENTEERING_GDAL_OGC_CATALOG_H
 
-#include <QCoreApplication>
 #include <QString>
 #include <QVector>
 
@@ -39,8 +38,6 @@ struct GdalOgcCatalogResult
 
 class GdalOgcCatalog
 {
-	Q_DECLARE_TR_FUNCTIONS(OpenOrienteering::GdalOgcCatalog)
-
 public:
 	static GdalOgcCatalogResult discover(const GdalOgcConnection& connection);
 	static GdalOgcSource describeSource(const GdalOgcConnection& connection,
