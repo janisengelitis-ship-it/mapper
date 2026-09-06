@@ -1,0 +1,109 @@
+name: Apply OGC map editor patch
+
+on:
+  push:
+    branches:
+      - wms-wmts-online-backgrounds-stage
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: wms-wmts-online-backgrounds-stage
+
+      - name: Apply focused map editor changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/gui/map/map_editor.cpp")
+          text = path.read_text(encoding="utf-8")
+
+          if 'newAction("openogctemplate"' in text:
+              raise SystemExit(0)
+
+          old = '''#ifdef MAPPER_USE_GDAL
+          #include "gdal/ogr_template.h"
+          #endif'''.replace("          ", "")
+          new = '''#ifdef MAPPER_USE_GDAL
+          #include "gdal/gdal_ogc_dialog.h"
+          #include "gdal/gdal_online_raster_template.h"
+          #include "gdal/ogr_template.h"
+          #endif'''.replace("          ", "")
+          if old not in text:
+              raise SystemExit("GDAL include anchor not found")
+          text = text.replace(old, new, 1)
+
+          anchor = '\topen_template_act = newAction("opentemplate", tr("Open template..."), this, SLOT(openTemplateClicked()), nullptr, QString{}, "templates_menu.html");'
+          block = '''#ifdef MAPPER_USE_GDAL
+          \tauto* ogc_template_act = newAction("openogctemplate", tr("Add WMS/WMTS background map..."), nullptr, nullptr, nullptr, QString{}, "templates_menu.html");
+          \tconnect(ogc_template_act, &QAction::triggered, this, [this](bool) {
+          \t\tQString preferred_crs;
+          \t\tif (map->getGeoreferencing().getState() == Georeferencing::Geospatial)
+          \t\t\tpreferred_crs = map->getGeoreferencing().getProjectedCRSSpec();
+          \t\tGdalOgcDialog dialog(preferred_crs, window);
+          \t\tif (dialog.exec() != QDialog::Accepted)
+          \t\t\treturn;
+
+          \t\tconst auto selection = dialog.selection();
+          \t\tconst bool fit_service_extent = map->getNumObjects() == 0
+          \t\t                                && map->getNumTemplates() == 0;
+          \t\tauto online_template = std::make_unique<GdalOnlineRasterTemplate>(
+          \t\t        selection.connection,
+          \t\t        selection.source.dataset_name,
+          \t\t        selection.source.description,
+          \t\t        selection.prepared_data,
+          \t\t        map);
+          \t\tif (!online_template->setupAndLoad(window, main_view))
+          \t\t{
+          \t\t\tQMessageBox::warning(window,
+          \t\t\t                     tr("WMS/WMTS background map"),
+          \t\t\t                     tr("Could not add the online background map: %1")
+          \t\t\t                     .arg(online_template->errorString()));
+          \t\t\treturn;
+          \t\t}
+
+          \t\tauto* online_template_ptr = online_template.get();
+          \t\tmap->addTemplate(-1, std::move(online_template));
+          \t\thideAllTemplates(false);
+          \t\tshowTemplateWindow(true);
+          \t\tif (fit_service_extent)
+          \t\t{
+          \t\t\tconst QRectF service_extent = online_template_ptr->calculateTemplateBoundingBox();
+          \t\t\tif (service_extent.isValid() && !service_extent.isEmpty())
+          \t\t\t\tmap_widget->adjustViewToRect(service_extent, MapWidget::ContinuousZoom);
+          \t\t}
+          \t\tmap->updateAllMapWidgets();
+          \t});
+          #endif
+          '''.replace("          ", "")
+          if anchor not in text:
+              raise SystemExit("Template action anchor not found")
+          text = text.replace(anchor, block + anchor, 1)
+
+          old = '\ttemplate_menu->addSeparator();\n\ttemplate_menu->addAction(open_template_act);'
+          new = '\ttemplate_menu->addSeparator();\n#ifdef MAPPER_USE_GDAL\n\ttemplate_menu->addAction(findAction("openogctemplate"));\n#endif\n\ttemplate_menu->addAction(open_template_act);'
+          if old not in text:
+              raise SystemExit("Template menu anchor not found")
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/gui/map/map_editor.cpp
+          git commit -m "Stage WMS/WMTS map editor integration"
+          git push origin HEAD:wms-wmts-online-backgrounds-stage
