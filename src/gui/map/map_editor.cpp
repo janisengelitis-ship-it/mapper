@@ -170,6 +170,8 @@
 #include "util/backports.h" // IWYU pragma: keep
 
 #ifdef MAPPER_USE_GDAL
+#include "gdal/gdal_ogc_dialog.h"
+#include "gdal/gdal_online_raster_template.h"
 #include "gdal/ogr_template.h"
 #endif
 
@@ -1041,6 +1043,47 @@ void MapEditorController::createActions()
 	template_window_act = newCheckAction("templatewindow", tr("Template setup window"), this, SLOT(showTemplateWindow(bool)), "templates.png", tr("Show/Hide the template window"), "templates_menu.html");
 	//QAction* template_config_window_act = newCheckAction("templateconfigwindow", tr("Template configurations window"), this, SLOT(showTemplateConfigurationsWindow(bool)), "window-new", tr("Show/Hide the template configurations window"));
 	//QAction* template_visibilities_window_act = newCheckAction("templatevisibilitieswindow", tr("Template visibilities window"), this, SLOT(showTemplateVisbilitiesWindow(bool)), "window-new", tr("Show/Hide the template visibilities window"));
+#ifdef MAPPER_USE_GDAL
+	auto* ogc_template_act = newAction("openogctemplate", tr("Add WMS/WMTS background map..."), nullptr, nullptr, nullptr, QString{}, "templates_menu.html");
+	connect(ogc_template_act, &QAction::triggered, this, [this](bool) {
+		QString preferred_crs;
+		if (map->getGeoreferencing().getState() == Georeferencing::Geospatial)
+			preferred_crs = map->getGeoreferencing().getProjectedCRSSpec();
+		GdalOgcDialog dialog(preferred_crs, window);
+		if (dialog.exec() != QDialog::Accepted)
+			return;
+
+		const auto selection = dialog.selection();
+		const bool fit_service_extent = map->getNumObjects() == 0
+		  && map->getNumTemplates() == 0;
+		auto online_template = std::make_unique<GdalOnlineRasterTemplate>(
+		        selection.connection,
+		        selection.source.dataset_name,
+		        selection.source.description,
+		        selection.prepared_data,
+		        map);
+		if (!online_template->setupAndLoad(window, main_view))
+		{
+			QMessageBox::warning(window,
+			 tr("WMS/WMTS background map"),
+			 tr("Could not add the online background map: %1")
+			 .arg(online_template->errorString()));
+			return;
+		}
+
+		auto* online_template_ptr = online_template.get();
+		map->addTemplate(-1, std::move(online_template));
+		hideAllTemplates(false);
+		showTemplateWindow(true);
+		if (fit_service_extent)
+		{
+			const QRectF service_extent = online_template_ptr->calculateTemplateBoundingBox();
+			if (service_extent.isValid() && !service_extent.isEmpty())
+				map_widget->adjustViewToRect(service_extent, MapWidget::ContinuousZoom);
+		}
+		map->updateAllMapWidgets();
+	});
+#endif
 	open_template_act = newAction("opentemplate", tr("Open template..."), this, SLOT(openTemplateClicked()), nullptr, QString{}, "templates_menu.html");
 	reopen_template_act = newAction("reopentemplate", tr("Reopen template..."), this, SLOT(reopenTemplateClicked()), nullptr, QString{}, "templates_menu.html");
 	
@@ -1296,6 +1339,9 @@ void MapEditorController::createMenuAndToolbars()
 	/*template_menu->addAction(template_config_window_act);
 	template_menu->addAction(template_visibilities_window_act);*/
 	template_menu->addSeparator();
+#ifdef MAPPER_USE_GDAL
+	template_menu->addAction(findAction("openogctemplate"));
+#endif
 	template_menu->addAction(open_template_act);
 	template_menu->addAction(reopen_template_act);
 	
