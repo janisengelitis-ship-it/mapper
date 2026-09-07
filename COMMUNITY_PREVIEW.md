@@ -1,0 +1,79 @@
+# WMS/WMTS Community Preview v0.1
+
+This is an **unofficial experimental build of OpenOrienteering Mapper** for evaluating generic online WMS and WMTS background maps.
+
+The goal is simple: make the implementation easy to try, collect real-world feedback from cartographers, and use that feedback to decide what should be improved before any future upstream contribution.
+
+This preview is not an official OpenOrienteering release.
+
+## What is included
+
+- Saved WMS/WMTS connection definitions.
+- Automatic WMS/WMTS service and layer discovery through GDAL.
+- Viewport-based online raster rendering without blocking the map paint path.
+- Reprojection from the service CRS to the current Mapper map CRS when required.
+- Memory/disk caching and request retry/timeout handling.
+- Project save/reopen support for online raster backgrounds.
+- Basic, Bearer-token and API-key authentication support.
+- Secure credential persistence through Windows Credential Manager when available.
+- HTTPS/TLS support in the standalone Windows package.
+
+The implementation is intentionally **provider-neutral**. There is no LVM-, NASA-, ArcGIS- or national-geoportal-specific rendering code.
+
+## Recommended way to test
+
+For first testing, use the portable Windows ZIP or install the preview separately from your normal Mapper installation.
+
+1. Create or open a georeferenced map in Mapper.
+2. Set the map CRS you normally use.
+3. Open **Templates → Add WMS/WMTS background map...**.
+4. Enter a connection name.
+5. Leave **Service type** on **Auto detect** unless you specifically want to force WMS or WMTS.
+6. Paste the service URL.
+7. Choose authentication if the service requires it; otherwise leave **None**.
+8. Press **Connect**.
+9. Select a layer from the discovered list and press **Add**.
+10. Pan and zoom around the map and check positioning, sharpness and responsiveness.
+11. Save the Mapper project, close it, reopen it and verify that the online background is restored correctly.
+
+## Public services useful for testing
+
+External services can change or be temporarily unavailable. Their data licences and permitted uses are determined by the service providers; users are responsible for complying with those terms.
+
+| Service | Type | URL | Useful test |
+| --- | --- | --- | --- |
+| LVM GEO | WMS | `https://geoserver.lvmgeo.lv/wmsvector62531a9bfcfa4015856924e94076a179?` | Latvian projected data and practical orienteering-map workflow |
+| Poland Geoportal NMT Shaded Relief | WMS | `https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WMS/ShadedRelief` | National DEM hillshade service; EPSG:2180 and other advertised CRS combinations |
+| NASA GIBS | WMTS | `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml` | Large global WMTS catalogue and EPSG:3857 tiles |
+
+The Poland Geoportal currently documents both WMS and WMTS shaded-relief services for its DEM/NMT data. NASA GIBS continues to expose its EPSG:3857 WMTS catalogue.
+
+## What feedback is most useful
+
+Please report successful tests as well as failures. For a reproducible report, include:
+
+- operating system;
+- preview version/build;
+- WMS or WMTS service URL;
+- selected layer;
+- Mapper map CRS;
+- service CRS / tile matrix set shown in the layer list;
+- what you expected;
+- what actually happened;
+- screenshot if positioning, scaling or rendering is wrong.
+
+Especially useful cases are national geoportals, orthophotos, LiDAR-derived hillshade, cadastral/topographic services, unusual CRS combinations, slow services, authenticated services and projects reopened after saving.
+
+## Current scope
+
+This preview is intended to evaluate the WMS/WMTS implementation, not to redefine the whole Mapper workflow. It deliberately keeps the contribution focused and does not bundle the separate LKS-2020 / EPSG:10306 work.
+
+The source branch is based directly on the current OpenOrienteering Mapper master used for this development and contains the WMS/WMTS feature as a focused change.
+
+Related upstream issue: **OpenOrienteering/mapper #84 — WMS (Web map service) support**.
+
+## Development note
+
+AI-assisted development tools were used during implementation and review. The code has also been exercised with automated tests and manual Windows testing against several real WMS/WMTS services. The purpose of this community preview is to add broader independent testing and technical review.
+
+Feedback, criticism and alternative implementation suggestions are welcome.
