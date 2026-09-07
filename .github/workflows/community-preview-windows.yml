@@ -107,9 +107,10 @@ jobs:
         run: |
           set -euxo pipefail
           cmake --build "$BUILD_DIR" -j2
-          cmake --build "$BUILD_DIR" --target qt-translations -j2
+          cmake --build "$BUILD_DIR" --target qt-translations assistant-translations -j2
           test -f "$BUILD_DIR/src/Mapper.exe"
           test -f "$BUILD_DIR/src/gdal/mapper-gdal-info.exe"
+          test -f "$BUILD_DIR/packaging/assistant_bg.qm"
 
       - name: Run WMS/WMTS regression tests
         shell: msys2 {0}
