@@ -1,0 +1,214 @@
+name: WMS-WMTS Community Preview Windows
+
+on:
+  push:
+    branches:
+      - community-preview/wms-wmts-v0.1
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wms-wmts-community-preview-v0.1
+  cancel-in-progress: true
+
+env:
+  BUILD_DIR: build-community-preview
+  PACKAGE_BASENAME: OpenOrienteering-Mapper-0.9.7-WMS-WMTS-Preview-v0.1-Windows-x64
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 150
+
+    steps:
+      - name: Preserve repository line endings
+        shell: pwsh
+        run: git config --global core.autocrlf input
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis --yes --no-progress
+          $nsis = "${env:ProgramFiles(x86)}\NSIS"
+          if (-not (Test-Path "$nsis\makensis.exe")) {
+            throw "makensis.exe was not installed"
+          }
+          $nsis | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install MSYS2 MinGW64 dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          cache: true
+          install: >-
+            git
+            unzip
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-proj
+            mingw-w64-x86_64-gdal
+            mingw-w64-x86_64-ca-certificates
+            mingw-w64-x86_64-doxygen
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-tools
+            mingw-w64-x86_64-qt5-svg
+            mingw-w64-x86_64-qt5-sensors
+            mingw-w64-x86_64-qt5-serialport
+            mingw-w64-x86_64-qt5-location
+            mingw-w64-x86_64-qt5-imageformats
+            mingw-w64-x86_64-qt5-translations
+
+      - name: Verify toolchain and OGC drivers
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          gcc --version
+          cmake --version
+          ninja --version
+          gdal-config --version
+          proj_version="$(pkg-config --modversion proj)"
+          gdal_version="$(gdal-config --version)"
+          echo "PROJ_VERSION=$proj_version" >> "$GITHUB_ENV"
+          echo "GDAL_VERSION=$gdal_version" >> "$GITHUB_ENV"
+          gdalinfo --formats | grep -E '^  WMS '
+          gdalinfo --formats | grep -E '^  WMTS '
+
+      - name: Configure Mapper
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          cmake -S . -B "$BUILD_DIR" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DMapper_VERSION_DISPLAY=0.9.7-WMS-WMTS-Preview-v0.1 \
+            -DMapper_BUILD_CLIPPER=ON \
+            -DMapper_PACKAGE_ASSISTANT=ON \
+            -DQt5Help_ASSISTANT_EXECUTABLE=/mingw64/bin/assistant-qt5.exe \
+            -DMapper_PACKAGE_PROJ=ON \
+            -DMapper_PACKAGE_GDAL=ON \
+            -DMapper_PACKAGE_QT=ON \
+            -DMAKENSIS_EXECUTABLE='C:/Program Files (x86)/NSIS/makensis.exe' \
+            -DPROJ_DATA_DIR=/mingw64/share/proj \
+            -DGDAL_DATA_DIR=/mingw64/share/gdal \
+            -DMapper_CA_BUNDLE_FILE=/mingw64/etc/ssl/certs/ca-bundle.crt
+
+      - name: Build Mapper and tests
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          cmake --build "$BUILD_DIR" -j2
+          cmake --build "$BUILD_DIR" --target qt-translations -j2
+          test -f "$BUILD_DIR/src/Mapper.exe"
+          test -f "$BUILD_DIR/src/gdal/mapper-gdal-info.exe"
+
+      - name: Run WMS/WMTS regression tests
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          strings -a "$BUILD_DIR/src/Mapper.exe" | grep -F 'Add WMS/WMTS background map'
+          strings -a "$BUILD_DIR/src/Mapper.exe" | grep -F 'GdalOnlineRasterTemplate'
+          "$BUILD_DIR/src/gdal/mapper-gdal-info.exe" > gdal-drivers.md
+          grep -E '^\| WMS \|' gdal-drivers.md
+          grep -E '^\| WMTS \|' gdal-drivers.md
+          ctest --test-dir "$BUILD_DIR" --output-on-failure -R 'gdal_ogc_t|georeferencing_t'
+
+      - name: Package Windows ZIP and installer EXE
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          cd "$BUILD_DIR"
+          cpack -G ZIP
+          cpack -G NSIS
+          test -f "$PACKAGE_BASENAME.zip"
+          test -f "$PACKAGE_BASENAME.exe"
+
+      - name: Verify self-contained package
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          rm -rf package-check
+          mkdir package-check
+          unzip -q "$BUILD_DIR/$PACKAGE_BASENAME.zip" -d package-check
+          package_root="package-check/$PACKAGE_BASENAME"
+          test -f "$package_root/Mapper.exe"
+          test -f "$package_root/qt.conf"
+          test -f "$package_root/plugins/platforms/qwindows.dll"
+          test -f "$package_root/proj/proj.db"
+          test -f "$package_root/gdal/gdalvrt.xsd"
+          test -f "$package_root/certs/ca-bundle.crt"
+          grep -Fq -- '-----BEGIN CERTIFICATE-----' "$package_root/certs/ca-bundle.crt"
+          test -n "$(find "$package_root" -maxdepth 1 -name 'libgdal-*.dll' -print -quit)"
+          test -n "$(find "$package_root" -maxdepth 1 -name 'libproj-*.dll' -print -quit)"
+          test -n "$(find "$package_root" -maxdepth 1 -name 'libcurl-*.dll' -print -quit)"
+          test -n "$(find "$package_root" -maxdepth 1 -name 'libssl-*.dll' -print -quit)"
+
+      - name: Create checksums
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          cd "$BUILD_DIR"
+          sha256sum "$PACKAGE_BASENAME.zip" "$PACKAGE_BASENAME.exe" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Launch Mapper from clean portable package
+        shell: pwsh
+        run: |
+          $packageRoot = Join-Path "package-check" $env:PACKAGE_BASENAME
+          $mapper = Join-Path $packageRoot "Mapper.exe"
+          if (-not (Test-Path $mapper)) {
+            throw "Packaged Mapper.exe not found: $mapper"
+          }
+          $process = Start-Process -FilePath $mapper -WorkingDirectory $packageRoot -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            if ($process.HasExited) {
+              throw "Packaged Mapper exited during launch smoke test (code $($process.ExitCode))"
+            }
+            Write-Host "Packaged Mapper remained running for the smoke-test interval."
+          }
+          finally {
+            if (-not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+            }
+          }
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OOM-WMS-WMTS-Community-Preview-v0.1-Windows-x64
+          path: |
+            build-community-preview/OpenOrienteering-Mapper-0.9.7-WMS-WMTS-Preview-v0.1-Windows-x64.exe
+            build-community-preview/OpenOrienteering-Mapper-0.9.7-WMS-WMTS-Preview-v0.1-Windows-x64.zip
+            build-community-preview/SHA256SUMS.txt
+            gdal-drivers.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wms-wmts-preview-v0.1
+          name: WMS/WMTS Community Preview v0.1
+          prerelease: true
+          make_latest: false
+          body: |
+            Unofficial OpenOrienteering Mapper community preview for evaluating generic WMS/WMTS online background maps.
+
+            This is a test build, not an official OpenOrienteering release. Please read COMMUNITY_PREVIEW.md before testing and report both successful and unsuccessful services.
+
+            Windows x64 assets include an installer EXE, a portable ZIP and SHA-256 checksums.
+          files: |
+            build-community-preview/OpenOrienteering-Mapper-0.9.7-WMS-WMTS-Preview-v0.1-Windows-x64.exe
+            build-community-preview/OpenOrienteering-Mapper-0.9.7-WMS-WMTS-Preview-v0.1-Windows-x64.zip
+            build-community-preview/SHA256SUMS.txt
+            gdal-drivers.md
