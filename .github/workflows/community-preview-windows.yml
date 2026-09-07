@@ -36,6 +36,21 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Apply LKS-2020 source patch and grid
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path packaging/proj-data | Out-Null
+          $grid = "packaging/proj-data/lv_lgia_lks92to2020.tif"
+          Invoke-WebRequest -Uri "https://cdn.proj.org/lv_lgia_lks92to2020.tif" -OutFile $grid
+          $expected = "6be363d4796bb3038e751da00e2344593edbb149ed193fc31b9c200688b31498"
+          $actual = (Get-FileHash -Algorithm SHA256 $grid).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "Unexpected LKS-2020 grid SHA-256: $actual"
+          }
+          python tools/apply_lks2020.py
+          Select-String -Path src/core/crs_template_implementation.cpp -Pattern "EPSG:10306" -SimpleMatch
+          Select-String -Path packaging/CMakeLists.txt -Pattern "lv_lgia_lks92to2020.tif" -SimpleMatch
+
       - name: Install NSIS
         shell: pwsh
         run: |
@@ -54,8 +69,6 @@ jobs:
           cache: true
           install: >-
             git
-            curl
-            python
             unzip
             mingw-w64-x86_64-toolchain
             mingw-w64-x86_64-cmake
@@ -88,20 +101,6 @@ jobs:
           projinfo EPSG:10306
           gdalinfo --formats | grep -E '^  WMS '
           gdalinfo --formats | grep -E '^  WMTS '
-
-      - name: Apply LKS-2020 source patch and grid
-        shell: msys2 {0}
-        run: |
-          set -euxo pipefail
-          mkdir -p packaging/proj-data
-          curl -L --retry 3 --retry-delay 2 \
-            -o packaging/proj-data/lv_lgia_lks92to2020.tif \
-            https://cdn.proj.org/lv_lgia_lks92to2020.tif
-          echo '6be363d4796bb3038e751da00e2344593edbb149ed193fc31b9c200688b31498  packaging/proj-data/lv_lgia_lks92to2020.tif' | sha256sum -c -
-          if command -v python3 >/dev/null 2>&1; then PYTHON=python3; else PYTHON=python; fi
-          "$PYTHON" tools/apply_lks2020.py
-          grep -F 'EPSG:10306' src/core/crs_template_implementation.cpp
-          grep -F 'lv_lgia_lks92to2020.tif' packaging/CMakeLists.txt
 
       - name: Configure Mapper
         shell: msys2 {0}
