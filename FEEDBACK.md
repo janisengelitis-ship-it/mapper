@@ -3,7 +3,7 @@
 This file gives testers a simple structure for reporting results for **WMS/WMTS Community Preview v0.1**.
 
 Release:
-https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-preview-v0.1
+https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-community-preview-v0.1
 
 Source branch:
 https://github.com/janisengelitis-ship-it/mapper/tree/community-preview/wms-wmts-v0.1

@@ -10,7 +10,7 @@ This is not a request for immediate merge and not an official OpenOrienteering r
 
 Preview release with Windows x64 installer, portable ZIP and SHA-256 checksums:
 
-https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-preview-v0.1
+https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-community-preview-v0.1
 
 Source branch:
 
@@ -19,6 +19,10 @@ https://github.com/janisengelitis-ship-it/mapper/tree/community-preview/wms-wmts
 Preview notes and testing instructions:
 
 https://github.com/janisengelitis-ship-it/mapper/blob/community-preview/wms-wmts-v0.1/COMMUNITY_PREVIEW.md
+
+Feedback guide:
+
+https://github.com/janisengelitis-ship-it/mapper/blob/community-preview/wms-wmts-v0.1/FEEDBACK.md
 
 The implementation is intended to be provider-neutral. It uses GDAL for WMS/WMTS service and layer discovery, supports viewport-based raster rendering, reprojection to the current Mapper map CRS when needed, caching, timeout/retry handling, project save/reopen support, and basic/auth-token/API-key authentication options.
 

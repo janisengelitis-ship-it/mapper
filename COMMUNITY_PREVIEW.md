@@ -6,6 +6,16 @@ The goal is simple: make the implementation easy to try, collect real-world feed
 
 This preview is not an official OpenOrienteering release.
 
+## Download
+
+Preview release with Windows x64 installer, portable ZIP, SHA-256 checksums and GDAL driver report:
+
+https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-community-preview-v0.1
+
+For test reporting, please use the structure in `FEEDBACK.md`:
+
+https://github.com/janisengelitis-ship-it/mapper/blob/community-preview/wms-wmts-v0.1/FEEDBACK.md
+
 ## What is included
 
 - Saved WMS/WMTS connection definitions.

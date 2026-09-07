@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - community-preview/wms-wmts-v0.1
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -198,7 +201,8 @@ jobs:
       - name: Publish prerelease
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: wms-wmts-preview-v0.1
+          tag_name: wms-wmts-community-preview-v0.1
+          target_commitish: community-preview/wms-wmts-v0.1
           name: WMS/WMTS Community Preview v0.1
           prerelease: true
           make_latest: false
@@ -207,7 +211,16 @@ jobs:
 
             This is a test build, not an official OpenOrienteering release. Please read COMMUNITY_PREVIEW.md before testing and report both successful and unsuccessful services.
 
-            Windows x64 assets include an installer EXE, a portable ZIP and SHA-256 checksums.
+            Windows x64 assets include an installer EXE, a portable ZIP, SHA-256 checksums, and a GDAL driver report.
+
+            Source branch:
+            https://github.com/janisengelitis-ship-it/mapper/tree/community-preview/wms-wmts-v0.1
+
+            Testing guide:
+            https://github.com/janisengelitis-ship-it/mapper/blob/community-preview/wms-wmts-v0.1/COMMUNITY_PREVIEW.md
+
+            Feedback guide:
+            https://github.com/janisengelitis-ship-it/mapper/blob/community-preview/wms-wmts-v0.1/FEEDBACK.md
           files: |
             build-community-preview/OpenOrienteering-Mapper-0.9.7-WMS-WMTS-Preview-v0.1-Windows-x64.exe
             build-community-preview/OpenOrienteering-Mapper-0.9.7-WMS-WMTS-Preview-v0.1-Windows-x64.zip

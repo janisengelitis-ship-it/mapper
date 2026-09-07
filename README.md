@@ -2,7 +2,10 @@
 
 > **WMS/WMTS Community Preview v0.1**  
 > This branch is an **unofficial experimental build** for testing generic online WMS/WMTS background maps in Mapper. It is published for community evaluation, criticism and implementation suggestions before any future upstream contribution.  
-> **Start here:** [Community Preview guide](COMMUNITY_PREVIEW.md)
+> **Download:** [WMS/WMTS Community Preview v0.1](https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-community-preview-v0.1)  
+> **Start here:** [Community Preview guide](COMMUNITY_PREVIEW.md)  
+> **Feedback:** [Feedback guide](FEEDBACK.md)  
+> **Announcement draft:** [Community announcement draft](COMMUNITY_ANNOUNCEMENT.md)
 
 ![Mapper Screenshot](https://www.openorienteering.org/mapper-manual/pages/images/main_window.png)
 
