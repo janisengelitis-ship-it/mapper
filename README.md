@@ -1,8 +1,8 @@
 # OpenOrienteering Mapper
 
-> **WMS/WMTS Community Preview v0.1**  
-> This branch is an **unofficial experimental build** for testing generic online WMS/WMTS background maps in Mapper. It is published for community evaluation, criticism and implementation suggestions before any future upstream contribution.  
-> **Download:** [WMS/WMTS Community Preview v0.1](https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-community-preview-v0.1)  
+> **WMS/WMTS + LKS-2020 Community Preview v0.2**  
+> This branch is an **unofficial experimental build** for testing generic online WMS/WMTS background maps in Mapper together with **LKS-2020 / Latvia TM (EPSG:10306)** support. It is published for community evaluation, criticism and implementation suggestions before any future upstream contribution.  
+> **Download:** [WMS/WMTS + LKS-2020 Community Preview v0.2](https://github.com/janisengelitis-ship-it/mapper/releases/tag/wms-wmts-lks2020-community-preview-v0.2)  
 > **Start here:** [Community Preview guide](COMMUNITY_PREVIEW.md)  
 > **Feedback:** [Feedback guide](FEEDBACK.md)  
 > **Announcement draft:** [Community announcement draft](COMMUNITY_ANNOUNCEMENT.md)
