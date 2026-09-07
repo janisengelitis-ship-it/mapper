@@ -1,5 +1,9 @@
 # OpenOrienteering Mapper
 
+> **WMS/WMTS Community Preview v0.1**  
+> This branch is an **unofficial experimental build** for testing generic online WMS/WMTS background maps in Mapper. It is published for community evaluation, criticism and implementation suggestions before any future upstream contribution.  
+> **Start here:** [Community Preview guide](COMMUNITY_PREVIEW.md)
+
 ![Mapper Screenshot](https://www.openorienteering.org/mapper-manual/pages/images/main_window.png)
 
 OpenOrienteering Mapper is an orienteering mapmaking program and provides
